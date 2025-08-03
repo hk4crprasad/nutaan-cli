@@ -9,7 +9,7 @@ description = "A powerful ReAct Python Assistant with AI capabilities"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "Tecosys", email = "support@tecosys.com"}
+    {name = "Tecosys", email = "info@tecosys.in"}
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

@@ -413,7 +413,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 - 🌐 Visit: [tecosys.in](https://tecosys.in) | [nutaan.com](https://nutaan.com)
-- 📧 Email: support@tecosys.com
+- 📧 Email: info@tecosys.in
 - 🐛 Issues: [GitHub Issues](https://github.com/Tecosys/nutaan-cli/issues)
 - 💬 Discussions: [GitHub Discussions](https://github.com/Tecosys/nutaan-cli/discussions)
 - 📖 Documentation: [Wiki](https://github.com/Tecosys/nutaan-cli/wiki)
