@@ -2,7 +2,7 @@
 Agent Manager - Handles agent creation and configuration
 """
 
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 from langgraph.checkpoint.memory import MemorySaver
 
 # Import tools from the tools folder
@@ -14,11 +14,11 @@ from ..tools.file_edit_tool import FileEditTool
 from ..tools.think_tool import ThinkTool
 from ..tools.plan_tool import PlanTool
 
-# Import prompt system, LLM manager, and tool approval
+# Import prompt system, LLM manager, and approval middleware
 from .prompt_system import PromptSystem
 from .llm_manager import llm_manager
 from .tool_approval_manager import ToolApprovalManager
-from .approval_agent_wrapper import ApprovalAgentWrapper
+from .approval_middleware import create_approval_middleware
 
 
 class AgentManager:
@@ -66,7 +66,7 @@ class AgentManager:
         return self._tools
     
     def create_agent(self, think_mode: bool = False, session_id: str = None):
-        """Create a LangChain agent with all custom tools, memory, and human approval."""
+        """Create a LangChain agent with all custom tools, memory, and human approval middleware."""
         
         # Use session_id as agent key, or create default
         agent_key = session_id or f"default_{'think' if think_mode else 'normal'}"
@@ -84,16 +84,23 @@ class AgentManager:
         
         # Get system prompt
         prompt_system = PromptSystem(think_mode=think_mode)
+        system_prompt = prompt_system.get_system_prompt()
         
-        # Create the base agent with memory
-        base_agent = create_react_agent(llm, tools, checkpointer=memory)
+        # Create approval middleware
+        approval_middleware = create_approval_middleware(self._approval_manager)
         
-        # Wrap the agent with approval system
-        wrapped_agent = ApprovalAgentWrapper(base_agent, self._approval_manager)
+        # Create the agent with middleware
+        agent = create_agent(
+            model=llm,
+            tools=tools,
+            system_prompt=system_prompt,
+            middleware=[approval_middleware],
+            checkpointer=memory
+        )
         
-        # Store and return
+        # Store agent data
         agent_data = {
-            'agent': wrapped_agent,
+            'agent': agent,
             'prompt_system': prompt_system,
             'think_mode': think_mode,
             'session_id': session_id,

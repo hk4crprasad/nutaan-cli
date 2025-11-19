@@ -97,55 +97,17 @@ class ToolApprovalManager:
             formatted_args = json.dumps(args, indent=2)
             return f"[bold blue]Tool:[/bold blue] {tool_name}\n[dim]Arguments:\n{formatted_args}[/dim]"
     
-    def human_approval(self, msg: AIMessage) -> AIMessage:
+    def _display_approval_request(self, tool_calls: List[Dict[str, Any]]):
         """
-        Check if tool calls in the message require approval.
-        This function implements the human-in-the-loop pattern from LangChain.
+        Display approval request for tool calls and get user approval.
         
         Args:
-            msg: AIMessage containing tool calls
-            
-        Returns:
-            msg: Original message if approved
+            tool_calls: List of tool call dictionaries
             
         Raises:
-            NotApproved: If any tool call is not approved
+            NotApproved: If user denies approval
         """
-        if not msg.tool_calls:
-            return msg
-        
-        # Filter tool calls that need approval
-        dangerous_calls = [
-            call for call in msg.tool_calls 
-            if call.get('name') in self.dangerous_tools
-        ]
-        
-        if not dangerous_calls:
-            # All tools are safe, no approval needed
-            return msg
-        
-        # Check for cached approvals
-        all_approved = True
-        pending_calls = []
-        
-        for tool_call in dangerous_calls:
-            tool_name = tool_call.get('name')
-            args = tool_call.get('args', {})
-            approval_key = self._create_approval_key(tool_name, args)
-            
-            if approval_key in self.approvals:
-                if not self.approvals[approval_key]:
-                    # Previously denied
-                    raise NotApproved(f"Tool '{tool_name}' was previously denied")
-            else:
-                # Need to ask for approval
-                pending_calls.append((tool_call, approval_key))
-                all_approved = False
-        
-        if all_approved and not pending_calls:
-            return msg
-        
-        # Display approval request
+        # Display approval request header
         self.console.print("\n" + "="*60)
         self.console.print(Panel(
             "[bold red]🔒 TOOL APPROVAL REQUIRED[/bold red]",
@@ -153,7 +115,15 @@ class ToolApprovalManager:
             expand=False
         ))
         
-        for tool_call, approval_key in pending_calls:
+        for tool_call in tool_calls:
+            tool_name = tool_call.get('name')
+            args = tool_call.get('args', {})
+            approval_key = self._create_approval_key(tool_name, args)
+            
+            # Skip if already approved permanently
+            if approval_key in self.approvals and self.approvals[approval_key]:
+                continue
+            
             self.console.print("\n" + "-"*40)
             tool_display = self._display_tool_call(tool_call)
             self.console.print(Panel(tool_display, expand=False))
@@ -184,7 +154,6 @@ class ToolApprovalManager:
                     break
                 elif choice == "3":
                     # Deny
-                    tool_name = tool_call.get('name')
                     raise NotApproved(f"Tool '{tool_name}' denied by user")
                 elif choice == "4":
                     # Cancel
@@ -192,6 +161,56 @@ class ToolApprovalManager:
         
         self.console.print("\n[green]✅ All tools approved. Proceeding with execution...[/green]")
         self.console.print("="*60 + "\n")
+    
+    def human_approval(self, msg: AIMessage) -> AIMessage:
+        """
+        Check if tool calls in the message require approval.
+        This function implements the human-in-the-loop pattern from LangChain.
+        
+        Args:
+            msg: AIMessage containing tool calls
+            
+        Returns:
+            msg: Original message if approved
+            
+        Raises:
+            NotApproved: If any tool call is not approved
+        """
+        if not msg.tool_calls:
+            return msg
+        
+        # Filter tool calls that need approval
+        dangerous_calls = [
+            call for call in msg.tool_calls 
+            if call.get('name') in self.dangerous_tools
+        ]
+        
+        if not dangerous_calls:
+            # All tools are safe, no approval needed
+            return msg
+        
+        # Check for cached approvals
+        pending_calls = []
+        
+        for tool_call in dangerous_calls:
+            tool_name = tool_call.get('name')
+            args = tool_call.get('args', {})
+            approval_key = self._create_approval_key(tool_name, args)
+            
+            if approval_key in self.approvals:
+                if not self.approvals[approval_key]:
+                    # Previously denied
+                    raise NotApproved(f"Tool '{tool_name}' was previously denied")
+            else:
+                # Need to ask for approval
+                pending_calls.append(tool_call)
+        
+        if not pending_calls:
+            # All approved from cache
+            return msg
+        
+        # Display approval request for pending calls
+        self._display_approval_request(pending_calls)
         
         return msg
     

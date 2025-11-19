@@ -22,16 +22,16 @@ class PromptSystem:
         """Get the CLI system prompt prefix."""
         return f"You are {self.product_name}, an interactive Python-based assistant."
     
-    async def get_system_prompt(self) -> List[str]:
-        """Get the complete system prompt."""
+    def get_system_prompt(self) -> str:
+        """Get the complete system prompt as a single string."""
         base_prompt = self._get_base_system_prompt()
-        env_info = await self.get_env_info()
+        env_info = self.get_env_info()
         
-        return [
-            base_prompt,
-            f"\n{env_info}",
-            "IMPORTANT: Always use the Think tool for complex reasoning and to maintain context across conversations.",
-        ]
+        return f"""{base_prompt}
+
+{env_info}
+
+IMPORTANT: Always use the Think tool for complex reasoning and to maintain context across conversations."""
     
     def _get_base_system_prompt(self) -> str:
         """Get the base system prompt with all instructions."""
@@ -134,7 +134,7 @@ REMEMBER: The user specifically enabled think mode. They want to see your reason
         """Get the standard think tool section."""
         return "Use the Think tool when you need to reason through complex problems, analyze requirements, or plan your approach before taking action."
 
-    async def get_env_info(self) -> str:
+    def get_env_info(self) -> str:
         """Get environment information."""
         try:
             # Check if we're in a git repository
@@ -173,20 +173,19 @@ Python Version: {platform.python_version()}
         except:
             return False
     
-    async def get_agent_prompt(self) -> List[str]:
+    def get_agent_prompt(self) -> str:
         """Get the agent prompt for specialized tasks."""
-        env_info = await self.get_env_info()
+        env_info = self.get_env_info()
         
-        return [
-            f"""You are a specialized agent for {self.product_name}, focused on development assistance. Your task is to analyze queries and provide precise, actionable responses using available tools.
+        return f"""You are a specialized agent for {self.product_name}, focused on development assistance. Your task is to analyze queries and provide precise, actionable responses using available tools.
 
 Guidelines:
 1. ESSENTIAL: Deliver concise, direct responses. Provide immediate answers without explanatory text, introductions, or conclusions. Single-word responses are ideal when appropriate.
 2. Include relevant file paths and code snippets that directly address the query
 3. Return absolute file paths only - never use relative paths in responses.
-4. Use the Think tool for complex reasoning and planning.""",
-            f"{env_info}",
-        ]
+4. Use the Think tool for complex reasoning and planning.
+
+{env_info}"""
 
 
 # Utility functions for easy access

@@ -69,6 +69,41 @@ from .core.session_history import session_history
 from .core.config_manager import ConfigManager
 
 
+def _safe_content_str(content) -> str:
+    """Safely convert message content to string.
+    
+    Handles multiple content formats:
+    - Simple strings
+    - Lists of strings
+    - Google Gemini content blocks: [{'type': 'text', 'text': '...', 'extras': {...}}]
+    
+    For Google models, extracts text from structured content blocks that include
+    thought signatures and other metadata.
+    """
+    if isinstance(content, str):
+        return content
+    elif isinstance(content, list):
+        # Handle list of content blocks
+        text_parts = []
+        for item in content:
+            if isinstance(item, dict):
+                # Google Gemini format: {'type': 'text', 'text': '...', 'extras': {'signature': '...'}}
+                if 'text' in item and 'type' in item and item['type'] == 'text':
+                    # Extract only the text field, ignore extras (signatures, etc.)
+                    text_parts.append(item['text'])
+                elif 'text' in item:
+                    # Fallback: any dict with 'text' key
+                    text_parts.append(item['text'])
+                else:
+                    # Other content blocks (images, tool calls, etc.)
+                    text_parts.append(str(item))
+            else:
+                text_parts.append(str(item))
+        return ' '.join(text_parts)
+    else:
+        return str(content) if content else ''
+
+
 class UIManager:
     """Handles user interface with Rich formatting."""
     
@@ -392,13 +427,14 @@ class ConversationHandler:
                     
                     # Collect AI response content
                     if hasattr(last_message, 'content') and last_message.content:
-                        if last_message.content.strip() != input_message['content'].strip():
-                            agent_response_content.append(last_message.content)
+                        content_str = _safe_content_str(last_message.content)
+                        if content_str.strip() != input_message['content'].strip():
+                            agent_response_content.append(content_str)
                 
                 # Handle tool results with enhanced display
                 elif hasattr(last_message, 'type') and last_message.type == 'tool':
                     if hasattr(last_message, 'content') and last_message.content:
-                        content = last_message.content
+                        content = _safe_content_str(last_message.content)
                         tool_name = getattr(last_message, 'name', 'unknown')
                         
                         # Format tool result like Claude CLI
@@ -429,7 +465,7 @@ class ConversationHandler:
             
             # Display final agent response
             if agent_response_content:
-                final_response = agent_response_content[-1]
+                final_response = _safe_content_str(agent_response_content[-1])
                 print(f"\n{final_response}")
                 
                 # Check if response seems incomplete and encourage follow-up
@@ -480,8 +516,9 @@ class ConversationHandler:
                     
                     if hasattr(last_message, 'type') and last_message.type == 'ai':
                         if hasattr(last_message, 'content') and last_message.content:
-                            if last_message.content.strip() != query.strip():
-                                print(f"Response: {last_message.content}")
+                            content_str = _safe_content_str(last_message.content)
+                            if content_str.strip() != query.strip():
+                                print(f"Response: {content_str}")
                                 break
                     
             except Exception as e:

@@ -56,25 +56,26 @@ except ImportError:
 try:
     from langchain_cohere import ChatCohere
     COHERE_AVAILABLE = True
-except ImportError:
+except (ImportError, Exception):
     COHERE_AVAILABLE = False
 
 try:
     from langchain_fireworks import ChatFireworks
     FIREWORKS_AVAILABLE = True
-except ImportError:
+except (ImportError, TypeError, Exception):
+    # TypeError can occur due to protobuf conflicts in fireworks SDK
     FIREWORKS_AVAILABLE = False
 
 try:
     from langchain_together import ChatTogether
     TOGETHER_AVAILABLE = True
-except ImportError:
+except (ImportError, Exception):
     TOGETHER_AVAILABLE = False
 
 try:
     from langchain_groq import ChatGroq
     GROQ_AVAILABLE = True
-except ImportError:
+except (ImportError, Exception):
     GROQ_AVAILABLE = False
 
 
